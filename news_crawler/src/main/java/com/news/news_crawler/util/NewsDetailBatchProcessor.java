@@ -43,26 +43,24 @@ public class NewsDetailBatchProcessor {
     private static final AtomicInteger currentConcurrency = new AtomicInteger(INITIAL_CONCURRENT_REQUESTS);
 
     public static void main(String[] args) {
-        try {
-            // 동적 ExecutorService 초기화
-            executorService = Executors.newFixedThreadPool(MAX_CONCURRENT_REQUESTS);
-            System.out.println("스마트 병렬 크롤러 시작 - 초기 동시 요청: " + INITIAL_CONCURRENT_REQUESTS);
-            
-            processCsvFilesAndCrawlDetails();
-        } finally {
-            // 프로그램 종료 시 스레드 풀 정리
-            if (executorService != null) {
-                executorService.shutdown();
-                try {
-                    if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
-                        executorService.shutdownNow();
-                    }
-                } catch (InterruptedException e) {
+    try {
+        executorService = Executors.newFixedThreadPool(MAX_CONCURRENT_REQUESTS);
+        System.out.println("스마트 병렬 크롤러 시작 - 초기 동시 요청: " + INITIAL_CONCURRENT_REQUESTS);
+        processCsvFilesAndCrawlDetails();
+    } finally {
+        if (executorService != null) {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
                     executorService.shutdownNow();
                 }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
             }
         }
     }
+}
+
 
     public static void processCsvFilesAndCrawlDetails() {
         try {
@@ -73,15 +71,21 @@ public class NewsDetailBatchProcessor {
                 return;
             }
 
-            // 가장 최신 날짜/시간 폴더 찾기
-            File[] dateFolders = staticDirectory.listFiles(File::isDirectory);
-            if (dateFolders == null || dateFolders.length == 0) {
+            // 날짜 폴더 탐색, 최신 폴더 선정
+            List<File> allDateFolders = new ArrayList<>();
+            for (File ampmFolder : staticDirectory.listFiles(File::isDirectory)) {
+                File[] dateFolders = ampmFolder.listFiles(File::isDirectory);
+                if (dateFolders != null) {
+                    allDateFolders.addAll(Arrays.asList(dateFolders));
+                }
+            }
+
+            if (allDateFolders.isEmpty()) {
                 System.out.println("날짜/시간 폴더를 찾을 수 없습니다.");
                 return;
             }
 
-            // 가장 최신 폴더 찾기 (폴더명 기준으로 정렬)
-            File latestFolder = Arrays.stream(dateFolders)
+            File latestFolder = allDateFolders.stream()
                     .filter(folder -> folder.getName().matches("\\d{4}-\\d{2}-\\d{2}_[AP]M"))
                     .max(Comparator.comparing(File::getName))
                     .orElse(null);
@@ -92,34 +96,25 @@ public class NewsDetailBatchProcessor {
             }
 
             System.out.println("발견된 날짜/시간 폴더들:");
-            for (File folder : dateFolders) {
+            for (File folder : allDateFolders) {
                 String indicator = (folder.equals(latestFolder)) ? " (최신)" : "";
-                System.out.println("- " + folder.getName() + indicator);
+                System.out.println("- " + folder.getParentFile().getName() + "/" + folder.getName() + indicator);
             }
 
             // 가장 최신 폴더 안의 모든 CSV 파일 처리
-            System.out.println("\n=== " + latestFolder.getName() + " 폴더의 모든 CSV 파일 처리 시작 ===");
-            
             File[] csvFiles = latestFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
             if (csvFiles == null || csvFiles.length == 0) {
                 System.out.println("CSV 파일을 찾을 수 없습니다.");
                 return;
             }
 
-            System.out.println("처리할 CSV 파일들:");
-            for (File csvFile : csvFiles) {
-                System.out.println("- " + csvFile.getName());
-            }
-
-            // 모든 CSV 파일을 순차적으로 처리
             for (File csvFile : csvFiles) {
                 System.out.println("\n=== " + csvFile.getName() + " 처리 시작 ===");
                 processSingleCsvFileOptimized(csvFile);
                 System.out.println("=== " + csvFile.getName() + " 처리 완료 ===\n");
-                
-                // 파일 간 잠시 대기 (서버 부하 방지)
+
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(1000); // 부하 방지용 딜레이
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -127,12 +122,12 @@ public class NewsDetailBatchProcessor {
             }
 
             System.out.println("모든 CSV 파일 처리가 완료되었습니다!");
-
         } catch (Exception e) {
             System.err.println("CSV 파일 처리 중 오류 발생: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
 
     private static void processSingleCsvFileOptimized(File csvFile) {    
         try {
@@ -444,7 +439,16 @@ public class NewsDetailBatchProcessor {
                 date = dateElement.attr("data-date-time");
             }
 
-            return new NewsDetail(title, content, reporter, date, url, press, categoryId, categoryName);
+            return NewsDetail.builder()
+                .title(title)
+                .reporter(reporter)
+                .date(date)
+                .link(url)
+                .press(press)
+                .categoryId(categoryId)
+                .categoryName(categoryName)
+                .content(content)
+                .build();
 
         } catch (Exception e) {
             System.err.println("크롤링 실패 (" + url + "): " + e.getMessage());
@@ -631,7 +635,7 @@ public class NewsDetailBatchProcessor {
             BufferedWriter bw = new BufferedWriter(osw);
             PrintWriter writer = new PrintWriter(bw)
         ) {
-            writer.println("\"category_id\",\"category_name\",\"press\",\"title\",\"content\",\"reporter\",\"date\",\"link\",\"timestamp\"");
+            writer.println("\"category_id\",\"category_name\",\"press\",\"title\",\"reporter\",\"date\",\"link\",\"timestamp\",\"content\"");
 
             DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd a hh:mm:ss", Locale.ENGLISH);
 
@@ -642,12 +646,13 @@ public class NewsDetailBatchProcessor {
                         detail.getCategoryName(),
                         escape(detail.getPress()),
                         escape(detail.getTitle()),
-                        escape(detail.getContent()),
                         escape(detail.getReporter()),
                         escape(detail.getDate()),
                         escape(detail.getLink()),
-                        timestamp);
+                        timestamp,
+                        escape(detail.getContent())); 
             }
+            
 
             System.out.println("상세 뉴스 데이터 CSV 저장 완료: " + fileName);
 

@@ -210,7 +210,7 @@ public class NaverNewsListCrawler {
         String ampm = now.getHour() < 12 ? "am" : "pm";
     
         // 날짜 폴더명
-        String dateFolderName = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String dateFolderName = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_a", Locale.ENGLISH));
     
         // 카테고리 이름
         String categoryName = CATEGORIES.get(categoryCode);
