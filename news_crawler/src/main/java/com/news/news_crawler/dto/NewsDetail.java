@@ -11,7 +11,7 @@ public class NewsDetail {
     private String reporter;
     private String date;
     private String link;
-    private String press;
+    private String press;         // 추가
     private int categoryId;
     private String categoryName;
 
