@@ -73,32 +73,60 @@ public class NewsDetailBatchProcessor {
                 return;
             }
 
-            // CSV 파일들 찾기
-            File[] csvFiles = staticDirectory.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
+            // 가장 최신 날짜/시간 폴더 찾기
+            File[] dateFolders = staticDirectory.listFiles(File::isDirectory);
+            if (dateFolders == null || dateFolders.length == 0) {
+                System.out.println("날짜/시간 폴더를 찾을 수 없습니다.");
+                return;
+            }
+
+            // 가장 최신 폴더 찾기 (폴더명 기준으로 정렬)
+            File latestFolder = Arrays.stream(dateFolders)
+                    .filter(folder -> folder.getName().matches("\\d{4}-\\d{2}-\\d{2}_[AP]M"))
+                    .max(Comparator.comparing(File::getName))
+                    .orElse(null);
+
+            if (latestFolder == null) {
+                System.out.println("최신 날짜/시간 폴더를 찾을 수 없습니다.");
+                return;
+            }
+
+            System.out.println("발견된 날짜/시간 폴더들:");
+            for (File folder : dateFolders) {
+                String indicator = (folder.equals(latestFolder)) ? " (최신)" : "";
+                System.out.println("- " + folder.getName() + indicator);
+            }
+
+            // 가장 최신 폴더 안의 모든 CSV 파일 처리
+            System.out.println("\n=== " + latestFolder.getName() + " 폴더의 모든 CSV 파일 처리 시작 ===");
+            
+            File[] csvFiles = latestFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
             if (csvFiles == null || csvFiles.length == 0) {
                 System.out.println("CSV 파일을 찾을 수 없습니다.");
                 return;
             }
 
-            // 가장 최신 파일 찾기 (수정 시간 기준)
-            File latestFile = Arrays.stream(csvFiles)
-                    .max(Comparator.comparingLong(File::lastModified))
-                    .orElse(null);
-
-            if (latestFile == null) {
-                System.out.println("최신 CSV 파일을 찾을 수 없습니다.");
-                return;
-            }
-
-            System.out.println("발견된 CSV 파일들:");
+            System.out.println("처리할 CSV 파일들:");
             for (File csvFile : csvFiles) {
-                String indicator = (csvFile.equals(latestFile)) ? " (최신)" : "";
-                System.out.println("- " + csvFile.getName() + indicator);
+                System.out.println("- " + csvFile.getName());
             }
 
-            // 가장 최신 파일만 처리
-            System.out.println("\n=== " + latestFile.getName() + " 처리 시작 (최신 파일) ===");
-            processSingleCsvFileOptimized(latestFile);
+            // 모든 CSV 파일을 순차적으로 처리
+            for (File csvFile : csvFiles) {
+                System.out.println("\n=== " + csvFile.getName() + " 처리 시작 ===");
+                processSingleCsvFileOptimized(csvFile);
+                System.out.println("=== " + csvFile.getName() + " 처리 완료 ===\n");
+                
+                // 파일 간 잠시 대기 (서버 부하 방지)
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            System.out.println("모든 CSV 파일 처리가 완료되었습니다!");
 
         } catch (Exception e) {
             System.err.println("CSV 파일 처리 중 오류 발생: " + e.getMessage());
@@ -126,7 +154,7 @@ public class NewsDetailBatchProcessor {
 
             // 결과를 새로운 CSV 파일로 저장
             if (!detailedNewsList.isEmpty()) {
-                saveDetailedNewsToCsv(detailedNewsList, csvFile.getName());
+                saveDetailedNewsToCsv(detailedNewsList, csvFile);
             }
 
         } catch (Exception e) {
@@ -315,7 +343,7 @@ public class NewsDetailBatchProcessor {
         try {
             // 연결 설정 최적화 (더 보수적으로)
             Connection connection = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .userAgent("Mozilla/5.0 (Windowsave NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                     .timeout(CONNECTION_TIMEOUT)
                     .followRedirects(true)
                     .ignoreContentType(true)
@@ -327,45 +355,69 @@ public class NewsDetailBatchProcessor {
                     .header("Upgrade-Insecure-Requests", "1");
 
             Document doc = connection.get();
-
-            // 기자 정보 추출 (우선순위 1: 지정된 필드)
+            
+            // 기자 정보 추출 (우선순위 1: 일반적인 기자 정보 필드)
             String reporter = "";
-            Element reporterElement = doc.selectFirst("#ct > div.media_end_head.go_trans > div.media_end_head_info.nv_notrans > div.media_end_head_journalist > a > em");
-            if (reporterElement != null) {
-                reporter = reporterElement.text();
+            Elements reporterElements = doc.select("#ct > div.media_end_head.go_trans > div.media_end_head_info.nv_notrans > div.media_end_head_journalist > a > em");
+            if (!reporterElements.isEmpty()) {
+                List<String> reporterNames = new ArrayList<>();
+                for (Element element : reporterElements) {
+                    String reporterName = element.text().trim();
+                    if (!reporterName.isEmpty()) {
+                        reporterNames.add(cleanReporterName(reporterName));
+                    }
+                }
+                if (!reporterNames.isEmpty()) {
+                    reporter = String.join(", ", reporterNames);
+                }
             } else {
-                // 우선순위 2: 대체 선택자에서 기자 정보 추출
-                Elements bylineSpans = doc.select("#contents > div.byline > p > span");
-                if (!bylineSpans.isEmpty()) {
-                    List<String> reporterParts = new ArrayList<>();
-                    for (Element span : bylineSpans) {
-                        String spanText = span.text().trim();
-                        if (!spanText.isEmpty()) {
-                            // 첫 번째 띄어쓰기 또는 괄호까지의 글자만 추출
-                            int spaceIndex = spanText.indexOf(' ');
-                            int parenthesisIndex = spanText.indexOf('(');
-                            
-                            int endIndex = -1;
-                            if (spaceIndex > 0 && parenthesisIndex > 0) {
-                                // 띄어쓰기와 괄호 둘 다 있으면 더 앞에 있는 것 선택
-                                endIndex = Math.min(spaceIndex, parenthesisIndex);
-                            } else if (spaceIndex > 0) {
-                                // 띄어쓰기만 있으면
-                                endIndex = spaceIndex;
-                            } else if (parenthesisIndex > 0) {
-                                // 괄호만 있으면
-                                endIndex = parenthesisIndex;
-                            }
-                            
-                            if (endIndex > 0) {
-                                reporterParts.add(spanText.substring(0, endIndex));
-                            } else {
-                                reporterParts.add(spanText);
-                            }
+                // 우선순위 2: 여러 기자인 경우의 선택자
+                Elements multiReporterElements = doc.select("#_JOURNALIST_BUTTON > em");
+                if (!multiReporterElements.isEmpty()) {
+                    List<String> reporterNames = new ArrayList<>();
+                    for (Element element : multiReporterElements) {
+                        String reporterName = element.text().trim();
+                        if (!reporterName.isEmpty()) {
+                            reporterNames.add(cleanReporterName(reporterName));
                         }
                     }
-                    if (!reporterParts.isEmpty()) {
-                        reporter = String.join(", ", reporterParts);
+                    if (!reporterNames.isEmpty()) {
+                        reporter = String.join(", ", reporterNames);
+                    }
+                } else {
+                    // 우선순위 3: 대체 선택자에서 기자 정보 추출
+                    Elements bylineSpans = doc.select("#contents > div.byline > p > span");
+                    if (!bylineSpans.isEmpty()) {
+                        List<String> reporterParts = new ArrayList<>();
+                        for (Element span : bylineSpans) {
+                            String spanText = span.text().trim();
+                            if (!spanText.isEmpty()) {
+                                // 첫 번째 띄어쓰기 또는 괄호까지의 글자만 추출
+                                int spaceIndex = spanText.indexOf(' ');
+                                int parenthesisIndex = spanText.indexOf('(');
+                                
+                                int endIndex = -1;
+                                if (spaceIndex > 0 && parenthesisIndex > 0) {
+                                    // 띄어쓰기와 괄호 둘 다 있으면 더 앞에 있는 것 선택
+                                    endIndex = Math.min(spaceIndex, parenthesisIndex);
+                                } else if (spaceIndex > 0) {
+                                    // 띄어쓰기만 있으면
+                                    endIndex = spaceIndex;
+                                } else if (parenthesisIndex > 0) {
+                                    // 괄호만 있으면
+                                    endIndex = parenthesisIndex;
+                                }
+                                
+                                if (endIndex > 0) {
+                                    reporterParts.add(cleanReporterName(spanText.substring(0, endIndex)));
+                                } else {
+                                    reporterParts.add(cleanReporterName(spanText));
+                                }
+                            }
+                        }
+                        if (!reporterParts.isEmpty()) {
+                            reporter = String.join(", ", reporterParts);
+                        }
                     }
                 }
             }
@@ -398,6 +450,35 @@ public class NewsDetailBatchProcessor {
             System.err.println("크롤링 실패 (" + url + "): " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * 기자 이름에서 "기자" 텍스트를 안전하게 제거
+     */
+    private static String cleanReporterName(String reporterName) {
+        if (reporterName == null || reporterName.trim().isEmpty()) {
+            return "";
+        }
+        
+        String cleaned = reporterName.trim();
+        
+        // "기자"로 끝나는 경우만 제거 (이름에 "기자"가 포함된 경우는 보존)
+        if (cleaned.endsWith(" 기자")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 3).trim();
+        } else if (cleaned.endsWith("기자")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 2).trim();
+        }
+        
+        // 다른 직책들도 제거
+        String[] titles = {" 특파원", "특파원", " 객원기자", "객원기자", " 통신원", "통신원"};
+        for (String title : titles) {
+            if (cleaned.endsWith(title)) {
+                cleaned = cleaned.substring(0, cleaned.length() - title.length()).trim();
+                break;
+            }
+        }
+        
+        return cleaned;
     }
 
     /**
@@ -457,12 +538,14 @@ public class NewsDetailBatchProcessor {
                         
                         // 링크가 유효한지 확인
                         if (link != null && !link.trim().isEmpty() && link.startsWith("http")) {
-                            // 카테고리 정보 추출 (새로운 CSV 형식에 맞춤)
+                            // 카테고리 정보 추출 (CSV 형식에 맞춤)
                             String categoryName = "정치"; // 기본값
                             int categoryId = 100; // 기본값
                             
                             if (fields.length >= 5) {
-                                String categoryField = fields[4].replaceAll("^\"|\"$", "");
+                                // 5개 컬럼 CSV: title,link,press,category,timestamp
+                                // 4번째 필드(fields[3])가 카테고리, 5번째 필드(fields[4])가 타임스탬프
+                                String categoryField = fields[3].replaceAll("^\"|\"$", "");
                                 categoryName = categoryField;
                                 // 카테고리명으로 ID 추출
                                 categoryId = getCategoryIdByName(categoryName);
@@ -530,16 +613,17 @@ public class NewsDetailBatchProcessor {
         return fields.toArray(new String[0]);
     }
 
-    private static void saveDetailedNewsToCsv(List<NewsDetail> newsList, String originalFileName) {
-        String baseName = originalFileName.replaceFirst("[.][^.]+$", ""); // 확장자 제거
+    private static void saveDetailedNewsToCsv(List<NewsDetail> newsList, File originalFile) {
+        String baseName = originalFile.getName().replaceFirst("[.][^.]+$", ""); // 확장자 제거
         String fileName = baseName + "_detailed" + ".csv";
 
-        // 기존 static 폴더 안에 detail 폴더 생성
-        File directory = new File("news_crawler/src/main/resources/static/detail");
-        if (!directory.exists()) {
-            directory.mkdirs(); // detail 폴더가 없으면 생성
+        // 원본 파일이 있는 폴더 안에 detail 폴더 생성
+        File parentDirectory = originalFile.getParentFile();
+        File detailFolder = new File(parentDirectory, "detail");
+        if (!detailFolder.exists()) {
+            detailFolder.mkdirs();
         }
-        File file = new File(directory, fileName);
+        File file = new File(detailFolder, fileName);
 
         try (
             FileOutputStream fos = new FileOutputStream(file, true);

@@ -29,7 +29,7 @@ public class NaverNewsListCrawler {
         "연합뉴스", "동아일보", "중앙일보", "한겨레", "경향신문", "MBC", 
         "파이낸셜뉴스", "국민일보", "서울경제", "한국일보", "헤럴드경제", "문화일보", "오마이뉴스", "SBS", "KBS"
     );
-    
+        
     public static void main(String[] args) {
         // 사용 가능한 카테고리 출력
         System.out.println("=== 사용 가능한 카테고리 ===");
@@ -37,38 +37,41 @@ public class NaverNewsListCrawler {
             System.out.println(code + ": " + name));
         System.out.println("========================\n");
         
-        // 카테고리 사용 (여기서 수정)
-        int categoryCode = 102;
+        // 모든 카테고리에 대해 크롤링 실행
         int targetCount = 100;
         
-        // 명령행 인수로 카테고리 코드와 목표 개수 받기
+        // 명령행 인수로 목표 개수 받기
         if (args.length >= 1) {
             try {
-                categoryCode = Integer.parseInt(args[0]);
-                if (!CATEGORIES.containsKey(categoryCode)) {
-                    System.out.println("잘못된 카테고리 코드입니다. 기본값(100: 정치)을 사용합니다.");
-                    categoryCode = 100;
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("카테고리 코드는 숫자여야 합니다. 기본값(100: 정치)을 사용합니다.");
-                categoryCode = 100;
-            }
-        }
-        
-        if (args.length >= 2) {
-            try {
-                targetCount = Integer.parseInt(args[1]);
+                targetCount = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
                 System.out.println("목표 개수는 숫자여야 합니다. 기본값(100)을 사용합니다.");
                 targetCount = 100;
             }
         }
         
-        System.out.println("선택된 카테고리: " + categoryCode + " (" + CATEGORIES.get(categoryCode) + ")");
-        System.out.println("목표 수집 개수: " + targetCount + "\n");
+        System.out.println("모든 카테고리에 대해 각각 " + targetCount + "개씩 크롤링을 시작합니다.\n");
         
-        List<NewsItem> newsList = crawlNewsList(categoryCode, targetCount);
-        saveToCsv(newsList, categoryCode);
+        // 모든 카테고리에 대해 순차적으로 크롤링
+        for (Map.Entry<Integer, String> category : CATEGORIES.entrySet()) {
+            int categoryCode = category.getKey();
+            String categoryName = category.getValue();
+            
+            System.out.println("=== " + categoryName + " 카테고리 크롤링 시작 ===");
+            List<NewsItem> newsList = crawlNewsList(categoryCode, targetCount);
+            saveToCsv(newsList, categoryCode);
+            System.out.println("=== " + categoryName + " 카테고리 크롤링 완료 ===\n");
+            
+            // 카테고리 간 잠시 대기 (서버 부하 방지)
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        
+        System.out.println("모든 카테고리 크롤링이 완료되었습니다!");
     }
     
     /**
@@ -200,39 +203,57 @@ public class NaverNewsListCrawler {
      * @param categoryCode 카테고리 코드
      */
     private static void saveToCsv(List<NewsItem> newsList, int categoryCode) {
-        // 날짜+시간 기반 파일명 생성
-        DateTimeFormatter fileNameFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_a_hh-mm-ss", Locale.ENGLISH);
-        String formattedTime = LocalDateTime.now().format(fileNameFormatter);
+        // 현재 시간 가져오기
+        LocalDateTime now = LocalDateTime.now();
+    
+        // AM/PM 구분
+        String ampm = now.getHour() < 12 ? "am" : "pm";
+    
+        // 날짜 폴더명
+        String dateFolderName = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    
+        // 카테고리 이름
         String categoryName = CATEGORIES.get(categoryCode);
-        String fileName = "naver_news_" + categoryName + "_" + formattedTime + ".csv";
-
-        File file = new File("C:\\dev\\BE09_FINAL_1team_CRAWLER\\n" + //
-                            "ews_crawler\\src\\main\\resources\\static\\" + fileName);
-
+        String fileName = "naver_news_" + categoryName + ".csv";
+    
+        // 최종 저장 경로: static/am/yyyy-MM-dd/ 또는 static/pm/yyyy-MM-dd/
+        File baseDir = new File("news_crawler/src/main/resources/static");
+        File ampmFolder = new File(baseDir, ampm);
+        File dateFolder = new File(ampmFolder, dateFolderName);
+        if (!dateFolder.exists()) {
+            dateFolder.mkdirs();
+        }
+    
+        File file = new File(dateFolder, fileName);
+    
         try (
             FileOutputStream fos = new FileOutputStream(file, true);
             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
             BufferedWriter bw = new BufferedWriter(osw);
             PrintWriter writer = new PrintWriter(bw)
         ) {
-            writer.println("title,link,press,category,timestamp");
-
+            // 파일이 새로 만들어졌다면 헤더 추가
+            if (file.length() == 0) {
+                writer.println("title,link,press,category,timestamp");
+            }
+    
             // 시간 포맷: 2025-07-28 AM 10:15:23
             DateTimeFormatter timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd a hh:mm:ss", Locale.ENGLISH);
-
+    
             for (NewsItem news : newsList) {
-                String timestamp = LocalDateTime.now().format(timestampFormatter);
+                String timestamp = now.format(timestampFormatter);
                 writer.printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"%n",
                         escape(news.title), escape(news.link), escape(news.press), 
                         categoryName, timestamp);
             }
-
-            System.out.println("CSV 저장 완료: " + fileName);
-
+    
+            System.out.println("CSV 저장 완료: " + ampm + "/" + dateFolderName + "/" + fileName);
+    
         } catch (Exception e) {
             System.out.println("CSV 저장 실패: " + e.getMessage());
         }
     }
+    
 
     /**
      * CSV에서 사용할 문자열 이스케이프 처리
