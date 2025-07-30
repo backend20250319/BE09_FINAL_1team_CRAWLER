@@ -20,9 +20,9 @@ public class NaverNewsListCrawler {
         100, "정치",
         101, "경제", 
         102, "사회",
-        103, "생활/문화",
+        103, "생활문화",
         104, "세계",
-        105, "IT/과학"
+        105, "IT과학"
     );
 
     private static final Set<String> ALLOWED_PRESSES = Set.of(
@@ -214,7 +214,7 @@ public class NaverNewsListCrawler {
     
         // 카테고리 이름
         String categoryName = CATEGORIES.get(categoryCode);
-        String fileName = "naver_news_" + categoryName + ".csv";
+        String fileName = "naver_news_" + categoryName + "_" + ampm + ".csv";
     
         // 최종 저장 경로: static/am/yyyy-MM-dd/ 또는 static/pm/yyyy-MM-dd/
         File baseDir = new File("news_crawler/src/main/resources/static");
