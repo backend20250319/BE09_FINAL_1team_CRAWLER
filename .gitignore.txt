@@ -1,0 +1,48 @@
+# =====================
+# 🔐 중요 설정/보안 파일
+# =====================
+*.env
+.env.*
+*.key
+*.pem
+*.crt
+*.jks
+*.p12
+*.keystore
+
+# =====================
+# 빌드 & 의존성 산출물
+# =====================
+target/             # Maven
+.gradle/            # Gradle
+build/
+*.class
+*.jar
+*.war
+*.ear
+*.egg-info/
+
+# =====================
+# 테스트 / 캐시
+# =====================
+.pytest_cache/
+.tox/
+.mypy_cache/
+.cache/
+coverage.xml
+htmlcov/
+__pycache__/
+*.py[cod]
+
+# =====================
+# 가상환경
+# =====================
+.venv/
+venv/
+ENV/
+env/
+
+# ====
+# 크롤링 데이터는 추적 안함
+/news_crawler/src/main/resources/static/*
+!*/.gitkeep
