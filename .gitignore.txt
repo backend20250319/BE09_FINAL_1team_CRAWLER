@@ -33,6 +33,7 @@ coverage.xml
 htmlcov/
 __pycache__/
 *.py[cod]
+.vscode/
 
 # =====================
 # 가상환경
