@@ -336,7 +336,7 @@ public class NewsDetailBatchProcessor {
     public static NewsDetail crawlNewsDetailOptimized(String url, String title, String press, 
                                                     String categoryName, int categoryId) {
         try {
-            // 연결 설정 최적화 (더 보수적으로)
+            // 연결 설정 최적화 (보수적으로)
             Connection connection = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windowsave NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                     .timeout(CONNECTION_TIMEOUT)
