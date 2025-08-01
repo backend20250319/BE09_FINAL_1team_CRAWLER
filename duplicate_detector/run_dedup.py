@@ -73,12 +73,13 @@ ungrouped_indices = set(df.index) - grouped_indices
 rep_ids.extend(ungrouped_indices)
 
 # ✅ 최종 deduplicated DataFrame 생성
-df_dedup = df.loc[sorted(set(rep_ids))].copy()
+related_ids = [r for _, r, _ in related_info]
+final_ids = sorted(set(rep_ids + related_ids))  # 중복 제거
+df_dedup = df.loc[final_ids].copy()
 
 # 결과 저장
-dedup_filename = f" deduplicated_{CATEGORY}_{DATE}_{PERIOD}.csv"
+dedup_filename = f"deduplicated_{CATEGORY}_{DATE}_{PERIOD}.csv"
 output_path = os.path.join(dedup_dir, dedup_filename)
-df_dedup.to_csv(output_path, index=False)
 
 print(f"\n✅ 본문 유사도 기반 대표 기사 저장 완료: {output_path}")
 print(f"✅ 중복 제거 결과: {len(df)} → {len(df_dedup)}개")
@@ -94,7 +95,17 @@ print(f"📎 연관 뉴스 {len(related_df)}건 저장 완료: {related_csv_path
 log_path = os.path.join(dedup_dir, f"logs_{CATEGORY}_{DATE}_{PERIOD}.txt")
 print("\n📦 유사 기사 그룹 내용:")
 
+mark_code_map = {
+    "✅ 대표": "REPRESENTATIVE",
+    "↔️ 연관": "RELATED",
+    "☑️ 유지": "KEPT",
+    "❌ 제거": "REMOVED"
+    }
+
 with open(log_path, "w", encoding="utf-8") as f:
+
+    mark_dict = {}
+
     for idx, group in enumerate(groups, 1):
         group_key = frozenset(group)
         rep = group_reps.get(group_key)
@@ -114,6 +125,8 @@ with open(log_path, "w", encoding="utf-8") as f:
             else:
                 mark = "☑️ 유지"
         
+            mark_dict[i] = mark  # 마킹 정보를 저장
+
             title = df.loc[i, 'title']
             f.write(f" - {mark} {title}\n")
             print(f" - {mark} {title}")
@@ -121,3 +134,19 @@ with open(log_path, "w", encoding="utf-8") as f:
         if content_log:
             f.write(content_log + "\n")
         print()
+    
+    # 그룹 외 기사 처리
+    for i in ungrouped_indices:
+        mark_dict[i] = "☑️ 유지"  # 그룹화되지 않은 기사들도 유지로 마킹
+
+    # 연관 뉴스 중 마킹 안 된 기사 처리
+    for i in related_ids:
+        if i not in mark_dict:
+            mark_dict[i] = "↔️ 연관"
+
+    # df_dedup에 mark 컬럼 추가
+    df_dedup["mark"] = df_dedup.index.map(mark_dict).fillna("☑️ 유지")  # 혹시 누락된 인덱스도 기본값 넣기
+
+    df_dedup["mark_code"] = df_dedup["mark"].map(mark_code_map)
+    
+    df_dedup.to_csv(output_path, index=False)
