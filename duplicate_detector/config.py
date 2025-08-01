@@ -12,15 +12,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent  # => BE09_FINAL_1team_CRA
 STATIC_BASE = PROJECT_ROOT / "news_crawler" / "src" / "main" / "resources" / "static"
 
 # 동적으로 설정할 변수들 (다른 파일에서 import 후 설정 가능)
-PERIOD = "pm"
-DATE = "2025-07-31"
-CATEGORY = "생활문화"
+PERIOD = "am"
+DATE = "2025-08-01"
+CATEGORY = "IT과학"
 THRESHOLD_TITLE = 0.5
-THRESHOLD_CONTENT = 0.4 
+THRESHOLD_CONTENT = 0.8
+THRESHOLD_RELATED_MIN = 0.4  # 또는 0.4 등 적절한 값
 
 # 파일 경로 생성 함수 (절대경로로 반환됨)
 def get_file_path(period=PERIOD, date=DATE, category=CATEGORY):
     return STATIC_BASE / period / f"{date}_{period}" / "detail" / f"naver_news_{category}_{period}_detailed.csv"
 
 def get_dedup_dir(period=PERIOD, date=DATE):
-    return STATIC_BASE / period / f"{date}_{period}" / "deduplicated"
+    return STATIC_BASE / period / f"{date}_{period}" / "deduplicated-related"

@@ -43,26 +43,30 @@ df.reset_index(drop=True, inplace=True)
 
 rep_ids = []
 dup_ids = []
+related_info = []  # (rep_id, related_id, similarity)
 group_reps = {}
 group_logs = {}
 
-for group in groups:
-    rep, is_duplicate_group, content_log = filter_and_pick_representative_by_content(group, df)
-    group_key = frozenset(group)
-    group_logs[group_key] = content_log  # ← 유사도 로그 저장
-    group_set = group_key
+grouped_indices = set()
 
-    if not is_duplicate_group:
+for group in groups:
+    rep, removed, related, content_log = filter_and_pick_representative_by_content(group, df)
+    group_key = frozenset(group)
+    group_logs[group_key] = content_log
+
+    if rep is not None:
+        rep_ids.append(rep)
+        dup_ids.extend(removed)
+        related_info.extend(related)
+        group_reps[group_key] = rep
+    else:
         rep_ids.extend(group)
         for i in group:
             group_reps[frozenset({i})] = i
-        group_reps[group_set] = None
-    else:
-        if rep is not None:
-            rep_ids.append(rep)
-            dup_ids.extend([i for i in group if i != rep])
-        group_reps[group_set] = rep
+        group_reps[group_key] = None
 
+    grouped_indices.update(group)
+    
 # ✅ 유사도 비교 대상 외 기사들도 추가
 grouped_indices = set(i for group in groups for i in group)
 ungrouped_indices = set(df.index) - grouped_indices
@@ -72,12 +76,19 @@ rep_ids.extend(ungrouped_indices)
 df_dedup = df.loc[sorted(set(rep_ids))].copy()
 
 # 결과 저장
-dedup_filename = f"naver_news_{CATEGORY}_{PERIOD}_{DATE}_deduplicated.csv"
+dedup_filename = f" deduplicated_{CATEGORY}_{DATE}_{PERIOD}.csv"
 output_path = os.path.join(dedup_dir, dedup_filename)
 df_dedup.to_csv(output_path, index=False)
 
 print(f"\n✅ 본문 유사도 기반 대표 기사 저장 완료: {output_path}")
 print(f"✅ 중복 제거 결과: {len(df)} → {len(df_dedup)}개")
+
+# ----- 연관 뉴스 CSV 저장 -----
+related_df = pd.DataFrame(related_info, columns=["rep_news_id", "related_news_id", "similarity"])
+related_csv_path = os.path.join(dedup_dir, f"related_{CATEGORY}_{DATE}_{PERIOD}.csv")
+related_df.to_csv(related_csv_path, index=False)
+
+print(f"📎 연관 뉴스 {len(related_df)}건 저장 완료: {related_csv_path}")
 
 # ----- 로그 저장 -----
 log_path = os.path.join(dedup_dir, f"{CATEGORY}_{PERIOD}_{DATE}_groups.txt")
@@ -87,19 +98,26 @@ with open(log_path, "w", encoding="utf-8") as f:
     for idx, group in enumerate(groups, 1):
         group_key = frozenset(group)
         rep = group_reps.get(group_key)
-        content_log = group_logs.get(group_key, "")  # ← 본문 유사도 로그 가져오기
+        content_log = group_logs.get(group_key, "")
 
         f.write("=======================================================\n")
         f.write(f"[그룹 {idx} - 총 {len(group)}건]\n")
         print(f"[그룹 {idx} - 총 {len(group)}건]")
 
         for i in sorted(group):
-            mark = "✅ 대표" if rep is not None and i == rep else ("❌ 제거" if rep is not None else "✅ 유지")
+            if rep is not None and i == rep:
+                mark = "✅ 대표"
+            elif any(r == i and rp == rep for rp, r, _ in related_info):
+                mark = "↔️ 연관"
+            elif rep is not None and i in dup_ids:
+                mark = "❌ 제거"
+            else:
+                mark = "☑️ 유지"
+        
             title = df.loc[i, 'title']
             f.write(f" - {mark} {title}\n")
             print(f" - {mark} {title}")
 
-        # 본문 유사도 로그 추가
         if content_log:
             f.write(content_log + "\n")
         print()
