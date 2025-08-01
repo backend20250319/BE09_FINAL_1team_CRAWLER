@@ -14,8 +14,8 @@ STATIC_BASE = PROJECT_ROOT / "news_crawler" / "src" / "main" / "resources" / "st
 # 동적으로 설정할 변수들 (다른 파일에서 import 후 설정 가능)
 PERIOD = "am"
 DATE = "2025-08-01"
-CATEGORY = "IT과학"
-THRESHOLD_TITLE = 0.5
+CATEGORY = "사회"
+THRESHOLD_TITLE = 0.3
 THRESHOLD_CONTENT = 0.8
 THRESHOLD_RELATED_MIN = 0.4  # 또는 0.4 등 적절한 값
 

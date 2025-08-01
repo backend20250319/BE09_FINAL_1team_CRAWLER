@@ -91,7 +91,7 @@ related_df.to_csv(related_csv_path, index=False)
 print(f"📎 연관 뉴스 {len(related_df)}건 저장 완료: {related_csv_path}")
 
 # ----- 로그 저장 -----
-log_path = os.path.join(dedup_dir, f"{CATEGORY}_{PERIOD}_{DATE}_groups.txt")
+log_path = os.path.join(dedup_dir, f"logs_{CATEGORY}_{DATE}_{PERIOD}.txt")
 print("\n📦 유사 기사 그룹 내용:")
 
 with open(log_path, "w", encoding="utf-8") as f:
