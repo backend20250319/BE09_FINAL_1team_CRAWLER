@@ -6,14 +6,12 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.core.env.Environment;
 import com.news.news_crawler.util.DateTimeUtils;
 
 public class CsvToDatabase {
-
-    // DB 연결 정보 (환경변수에서 읽기)
-    private static final String DB_URL = System.getenv("DB_URL");
-    private static final String DB_USER = System.getenv("DB_USERNAME");
-    private static final String DB_PASSWORD = System.getenv("DB_PASSWORD");
 
     // CSV 경로 (가장 최신 파일을 찾기 위한 동적 생성)
     private static String getCsvBasePath() {
@@ -132,19 +130,33 @@ public class CsvToDatabase {
     public static void main(String[] args) {
         System.out.println("=== CSV to DB 시작 ===");
         
-        // 환경변수 검증
-        if (DB_URL == null || DB_USER == null || DB_PASSWORD == null) {
-            System.err.println("❌ 환경변수가 설정되지 않았습니다!");
-            System.err.println("DB_URL: " + (DB_URL != null ? "설정됨" : "설정되지 않음"));
-            System.err.println("DB_USERNAME: " + (DB_USER != null ? "설정됨" : "설정되지 않음"));
-            System.err.println("DB_PASSWORD: " + (DB_PASSWORD != null ? "설정됨" : "설정되지 않음"));
-            System.err.println("환경변수를 설정하거나 application-dev.yml을 사용하세요.");
+        // Spring 컨텍스트를 통해 설정값 가져오기
+        String dbUrl, dbUser, dbPassword;
+        try {
+            // Spring Boot 애플리케이션 컨텍스트 생성
+            org.springframework.boot.SpringApplication app = new org.springframework.boot.SpringApplication(com.news.news_crawler.NewsCrawlerApplication.class);
+            app.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE);
+            org.springframework.context.ConfigurableApplicationContext context = app.run(args);
+            
+            // Environment에서 설정값 가져오기
+            org.springframework.core.env.Environment env = context.getEnvironment();
+            dbUrl = env.getProperty("spring.datasource.url");
+            dbUser = env.getProperty("spring.datasource.username");
+            dbPassword = env.getProperty("spring.datasource.password");
+            
+            System.out.println("✅ Spring 설정에서 DB 정보 가져오기 성공");
+            System.out.println("DB_URL: " + dbUrl);
+            System.out.println("DB_USER: " + dbUser);
+            
+            context.close();
+        } catch (Exception e) {
+            System.err.println("❌ Spring 설정 로드 실패: " + e.getMessage());
             return;
         }
         
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
             System.out.println("✅ DB 연결 성공");
             
             // 테이블 존재 여부 확인
