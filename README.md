@@ -91,7 +91,7 @@ curl -X POST http://localhost:8080/api/crawling/step/4  # DB 저장
 ## 📁 파일 구조
 
 ```
-BE09_FINAL_1team_CRAWLING_EXAMPLE/
+BE09_FINAL_1team_CRAWLING/
 ├── news_crawler/
 │   └── src/main/java/com/news/news_crawler/
 │       ├── util/
