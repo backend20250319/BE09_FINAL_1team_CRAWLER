@@ -1,5 +1,31 @@
-sentence-transformers==2.2.2
-torch>=1.10.0
-scikit-learn>=1.0
-pandas>=1.3
-numpy>=1.21
+# 데이터 처리 및 분석
+pandas>=1.5.0
+numpy>=1.21.0
+
+# 한국어 자연어 처리
+konlpy>=0.6.0
+
+# 머신러닝 및 유사도 계산
+scikit-learn>=1.1.0
+
+# 문장 임베딩 모델
+sentence-transformers>=2.2.0
+torch>=1.12.0
+
+# 파일 시스템 및 경로 처리
+pathlib2>=2.3.0
+
+# 정규표현식 (기본 라이브러리지만 명시)
+# re (Python 기본 라이브러리)
+
+# 컬렉션 (기본 라이브러리지만 명시)
+# collections (Python 기본 라이브러리)
+
+# itertools (기본 라이브러리지만 명시)
+# itertools (Python 기본 라이브러리)
+
+# 시간 처리 (기본 라이브러리지만 명시)
+# time (Python 기본 라이브러리)
+
+# 시스템 경로 (기본 라이브러리지만 명시)
+# os, sys (Python 기본 라이브러리)
