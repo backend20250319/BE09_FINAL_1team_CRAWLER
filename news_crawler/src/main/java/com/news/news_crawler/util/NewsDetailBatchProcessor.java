@@ -694,8 +694,7 @@ public class NewsDetailBatchProcessor {
             "자동차", 106,
             "생활", 107,
             "여행", 108,
-            "예술", 109,
-            "패션뷰티", 110
+            "예술", 109
         );
         return categoryMap.getOrDefault(categoryName, 100);
     }

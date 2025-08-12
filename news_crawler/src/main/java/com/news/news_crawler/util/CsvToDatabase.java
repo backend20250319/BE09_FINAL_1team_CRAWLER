@@ -121,11 +121,10 @@ public class CsvToDatabase {
         "IT과학", "IT_SCIENCE",
         "자동차", "VEHICLE",
         "여행", "TRAVEL_FOOD",
-        "예술", "ART",
-        "패션뷰티", "FASHION"
+        "예술", "ART"
     );
 
-    private static final String[] CATEGORIES = {"정치", "경제", "사회", "생활", "세계", "IT과학", "자동차", "여행", "예술", "패션뷰티"};
+    private static final String[] CATEGORIES = {"정치", "경제", "사회", "생활", "세계", "IT과학", "자동차", "여행", "예술"};
 
     /**
      * 메인 메서드
