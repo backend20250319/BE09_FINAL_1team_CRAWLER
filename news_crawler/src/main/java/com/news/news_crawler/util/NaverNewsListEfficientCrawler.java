@@ -532,7 +532,7 @@ public class NaverNewsListEfficientCrawler {
             Elements articles2 = doc2.select("#newsct div.section_latest_article ul li");
             
             for (Element article : articles2) {
-                if (collectedLinks.size() >= 10) break;
+                if (collectedLinks.size() >= 50) break;
                 NewsItem newsItem = extractNewsItem(article);
                 
                 if (newsItem != null && collectedLinks.add(newsItem.link)) {
@@ -665,7 +665,7 @@ public class NaverNewsListEfficientCrawler {
                 
                 if (newsItem != null && collectedLinks.add(newsItem.link)) {
                     batch.add(newsItem);
-                    System.out.printf("[예술] 수집 %d/75: %s%n", collectedLinks.size(), newsItem.title);
+                    System.out.printf("[예술] 수집 %d/80: %s%n", collectedLinks.size(), newsItem.title);
                 }
             }
 

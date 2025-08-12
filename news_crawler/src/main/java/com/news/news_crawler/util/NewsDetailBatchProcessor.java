@@ -22,17 +22,17 @@ import com.news.news_crawler.util.DateTimeUtils;
 
 public class NewsDetailBatchProcessor {
 
-    // 성능 최적화를 위한 상수들
-    private static final int BATCH_SIZE = 8; // 배치 크기 (적당한 크기)
-    private static final int INITIAL_CONCURRENT_REQUESTS = 2; // 초기 동시 요청 수 (3→2로 감소)
-    private static final int MAX_CONCURRENT_REQUESTS = 4; // 최대 동시 요청 수 (6→4로 감소)
+    // 성능 최적화를 위한 상수들 (안정성 강화)
+    private static final int BATCH_SIZE = 5; // 배치 크기 (8→5로 감소하여 안정성 향상)
+    private static final int INITIAL_CONCURRENT_REQUESTS = 1; // 초기 동시 요청 수 (2→1로 감소)
+    private static final int MAX_CONCURRENT_REQUESTS = 3; // 최대 동시 요청 수 (4→3으로 감소)
     private static final int MIN_CONCURRENT_REQUESTS = 1; // 최소 동시 요청 수
-    private static final int CONNECTION_TIMEOUT = 30000; // 연결 타임아웃 (20초→30초로 증가)
-    private static final int READ_TIMEOUT = 60000; // 읽기 타임아웃 (40초→60초로 증가)
-    private static final int RETRY_ATTEMPTS = 3; // 재시도 횟수 (2→3으로 증가)
-    private static final long RETRY_DELAY = 3000; // 재시도 간격 (2초→3초로 증가)
-    private static final long REQUEST_DELAY = 1000; // 요청 간격 (500ms→1000ms로 증가)
-    private static final double SUCCESS_RATE_THRESHOLD = 0.6; // 성공률 임계값 (70%→60%로 감소)
+    private static final int CONNECTION_TIMEOUT = 30000; // 연결 타임아웃 (30초 유지)
+    private static final int READ_TIMEOUT = 60000; // 읽기 타임아웃 (60초 유지)
+    private static final int RETRY_ATTEMPTS = 3; // 재시도 횟수 (3회 유지)
+    private static final long RETRY_DELAY = 5000; // 재시도 간격 (3초→5초로 증가)
+    private static final long REQUEST_DELAY = 1500; // 요청 간격 (1초→1.5초로 증가)
+    private static final double SUCCESS_RATE_THRESHOLD = 0.5; // 성공률 임계값 (60%→50%로 감소)
 
     // 연결 풀 관리를 위한 ExecutorService (동적 크기 조절)
     private static ExecutorService executorService;
