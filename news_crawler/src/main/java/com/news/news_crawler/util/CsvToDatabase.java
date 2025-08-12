@@ -116,12 +116,16 @@ public class CsvToDatabase {
         "정치", "POLITICS",
         "경제", "ECONOMY",
         "사회", "SOCIETY",
-        "생활문화", "CULTURE",
+        "생활", "LIFE",
         "세계", "INTERNATIONAL",
-        "IT과학", "IT_SCIENCE"
+        "IT과학", "IT_SCIENCE",
+        "자동차", "VEHICLE",
+        "여행", "TRAVEL_FOOD",
+        "예술", "ART",
+        "패션뷰티", "FASHION"
     );
 
-    private static final String[] CATEGORIES = {"정치", "경제", "사회", "생활문화", "세계", "IT과학"};
+    private static final String[] CATEGORIES = {"정치", "경제", "사회", "생활", "세계", "IT과학", "자동차", "여행", "예술", "패션뷰티"};
 
     /**
      * 메인 메서드

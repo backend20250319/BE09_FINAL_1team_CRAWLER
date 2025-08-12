@@ -28,7 +28,6 @@ public class NaverNewsListEfficientCrawler {
         100, "정치",
         101, "경제",
         102, "사회",
-        103, "생활문화",
         104, "세계",
         105, "IT과학"
     );
@@ -58,6 +57,26 @@ public class NaverNewsListEfficientCrawler {
         }
 
         System.out.println("모든 카테고리 크롤링이 완료되었습니다!");
+        
+        // 자동차 카테고리 크롤링 추가
+        System.out.println("\n자동차 카테고리 크롤링을 시작합니다.");
+        processVehicleCategory();
+        
+        // 생활 카테고리 크롤링 추가
+        System.out.println("\n생활 카테고리 크롤링을 시작합니다.");
+        processLifeCategory();
+        
+        // 여행 카테고리 크롤링 추가
+        System.out.println("\n여행 카테고리 크롤링을 시작합니다.");
+        processTravelCategory();
+        
+        // 예술 카테고리 크롤링 추가
+        System.out.println("\n예술 카테고리 크롤링을 시작합니다.");
+        processArtCategory();
+        
+        // 패션뷰티티 카테고리 크롤링 추가
+        System.out.println("\n패션뷰티 카테고리 크롤링을 시작합니다.");
+        processFashionCategory();
     }
 
     private static int parseTargetCount(String arg) {
@@ -206,7 +225,7 @@ public class NaverNewsListEfficientCrawler {
             String bracketContent = matcher.group(1).toLowerCase().trim();
             
             // 필터링할 키워드들 (와일드카드 패턴도 고려)
-            String[] filteredKeywords = {"시사", "칼럼", "컬럼", "Deep Read", "이우석의 푸드로지", "가정예배", "기고", "리포트", "프로젝트"};
+            String[] filteredKeywords = {"운세", "시사", "칼럼", "컬럼", "Deep Read", "이우석의 푸드로지", "가정예배", "기고", "리포트", "프로젝트", "오늘의 운세"};
             
             for (String keyword : filteredKeywords) {
                 // 키워드가 대괄호 내용에 포함되어 있는지 확인
@@ -223,6 +242,546 @@ public class NaverNewsListEfficientCrawler {
 
     private static String escape(String text) {
         return text.replace("\"", "\"\"");
+    }
+
+    /**
+     * 자동차 카테고리에서 100개 기사를 수집하는 메서드
+     * https://news.naver.com/breakingnews/section/103/239 (50개)
+     * https://news.naver.com/breakingnews/section/103/240 (50개)
+     */
+    private static void processVehicleCategory() {
+        System.out.println("[자동차] 크롤링 시작 - 목표: 40개 (자동차/시승기: 35개, 도로/교통: 5개개)");
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        Set<String> collectedLinks = new HashSet<>();
+        List<NewsItem> batch = new ArrayList<>();
+
+        try {
+            // 첫 번째 페이지 (239) - 35개 수집
+            String url1 = "https://news.naver.com/breakingnews/section/103/239";
+            System.out.println("[자동차] 첫 번째 페이지 크롤링 중: " + url1);
+            
+            driver.get(url1);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc1 = Jsoup.parse(driver.getPageSource());
+            Elements articles1 = doc1.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles1) {
+                if (collectedLinks.size() >= 35) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[자동차] 수집 %d/50: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            // 두 번째 페이지 (240) - 5개 수집
+            String url2 = "https://news.naver.com/breakingnews/section/103/240";
+            System.out.println("[자동차] 두 번째 페이지 크롤링 중: " + url2);
+            
+            driver.get(url2);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc2 = Jsoup.parse(driver.getPageSource());
+            Elements articles2 = doc2.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles2) {
+                if (collectedLinks.size() >= 40) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[자동차] 수집 %d/100: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            System.out.printf("[자동차] 수집 완료 - 총 %d개%n", batch.size());
+            
+            // 자동차 카테고리로 저장
+            saveCarCategoryToCsv(batch);
+
+        } catch (Exception e) {
+            System.out.println("[오류] 자동차 카테고리: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+    }
+
+    /**
+     * 자동차 카테고리 기사를 CSV로 저장하는 메서드
+     */
+    private static void saveCarCategoryToCsv(List<NewsItem> newsList) {
+        String ampm = DateTimeUtils.getCurrentPeriodLower();
+        String dateFolderName = DateTimeUtils.getCurrentDatePeriod();
+        String fileName = "naver_news_자동차_" + ampm + ".csv";
+
+        File baseDir = new File("news_crawler/src/main/resources/static");
+        File ampmFolder = new File(baseDir, ampm);
+        File dateFolder = new File(ampmFolder, dateFolderName);
+        if (!dateFolder.exists()) dateFolder.mkdirs();
+
+        File file = new File(dateFolder, fileName);
+        try (
+            FileOutputStream fos = new FileOutputStream(file, true);
+            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+            BufferedWriter bw = new BufferedWriter(osw);
+            PrintWriter writer = new PrintWriter(bw)
+        ) {
+            if (file.length() == 0) {
+                writer.println("title,link,press,news_category,published_at");
+            }
+            for (NewsItem news : newsList) {
+                String timestamp = DateTimeUtils.getCurrentTimestamp();
+                writer.printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"%n",
+                    escape(news.title), escape(news.link), escape(news.press),
+                    "자동차", timestamp);
+            }
+            System.out.println("자동차 CSV 저장 완료: " + ampm + "/" + dateFolderName + "/" + fileName);
+        } catch (Exception e) {
+            System.out.println("자동차 CSV 저장 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 생활 카테고리에서 100개 기사를 수집하는 메서드
+     * https://news.naver.com/breakingnews/section/103/241 (30개)
+     * https://news.naver.com/breakingnews/section/103/248 (30개)
+     * https://news.naver.com/breakingnews/section/103/245 (40개)
+     */
+    private static void processLifeCategory() {
+        System.out.println("[생활] 크롤링 시작 - 목표: 100개 (241: 30개, 248: 30개, 245: 40개)");
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        Set<String> collectedLinks = new HashSet<>();
+        List<NewsItem> batch = new ArrayList<>();
+
+        try {
+            // 첫 번째 페이지 (241) - 30개 수집
+            String url1 = "https://news.naver.com/breakingnews/section/103/241";
+            System.out.println("[생활] 첫 번째 페이지 크롤링 중: " + url1);
+            
+            driver.get(url1);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc1 = Jsoup.parse(driver.getPageSource());
+            Elements articles1 = doc1.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles1) {
+                if (collectedLinks.size() >= 30) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[생활] 수집 %d/30: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            // 두 번째 페이지 (248) - 40개 수집
+            String url2 = "https://news.naver.com/breakingnews/section/103/248";
+            System.out.println("[생활] 두 번째 페이지 크롤링 중: " + url2);
+            
+            driver.get(url2);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc2 = Jsoup.parse(driver.getPageSource());
+            Elements articles2 = doc2.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles2) {
+                if (collectedLinks.size() >= 70) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[생활] 수집 %d/60: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            // 세 번째 페이지 (245) - 50개 수집
+            String url3 = "https://news.naver.com/breakingnews/section/103/245";
+            System.out.println("[생활] 세 번째 페이지 크롤링 중: " + url3);
+            
+            driver.get(url3);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc3 = Jsoup.parse(driver.getPageSource());
+            Elements articles3 = doc3.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles3) {
+                if (collectedLinks.size() >= 120) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[생활] 수집 %d/100: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            System.out.printf("[생활] 수집 완료 - 총 %d개%n", batch.size());
+            
+            // 생활 카테고리로 저장
+            saveLifeCategoryToCsv(batch);
+
+        } catch (Exception e) {
+            System.out.println("[오류] 생활 카테고리: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+    }
+
+    /**
+     * 생활 카테고리 기사를 CSV로 저장하는 메서드
+     */
+    private static void saveLifeCategoryToCsv(List<NewsItem> newsList) {
+        String ampm = DateTimeUtils.getCurrentPeriodLower();
+        String dateFolderName = DateTimeUtils.getCurrentDatePeriod();
+        String fileName = "naver_news_생활_" + ampm + ".csv";
+
+        File baseDir = new File("news_crawler/src/main/resources/static");
+        File ampmFolder = new File(baseDir, ampm);
+        File dateFolder = new File(ampmFolder, dateFolderName);
+        if (!dateFolder.exists()) dateFolder.mkdirs();
+
+        File file = new File(dateFolder, fileName);
+        try (
+            FileOutputStream fos = new FileOutputStream(file, true);
+            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+            BufferedWriter bw = new BufferedWriter(osw);
+            PrintWriter writer = new PrintWriter(bw)
+        ) {
+            if (file.length() == 0) {
+                writer.println("title,link,press,news_category,published_at");
+            }
+            for (NewsItem news : newsList) {
+                String timestamp = DateTimeUtils.getCurrentTimestamp();
+                writer.printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"%n",
+                    escape(news.title), escape(news.link), escape(news.press),
+                    "생활", timestamp);
+            }
+            System.out.println("생활 CSV 저장 완료: " + ampm + "/" + dateFolderName + "/" + fileName);
+        } catch (Exception e) {
+            System.out.println("생활 CSV 저장 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 여행 카테고리에서 100개 기사를 수집하는 메서드
+     * https://news.naver.com/breakingnews/section/103/237 (50개)
+     * https://news.naver.com/breakingnews/section/103/238 (50개)
+     */
+    private static void processTravelCategory() {
+        System.out.println("[여행] 크롤링 시작 - 목표: 50개 (여행/레저: 40개, 음식/맛집: 10개)");
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        Set<String> collectedLinks = new HashSet<>();
+        List<NewsItem> batch = new ArrayList<>();
+
+        try {
+            // 첫 번째 페이지 (237) - 50개 수집
+            String url1 = "https://news.naver.com/breakingnews/section/103/237";
+            System.out.println("[여행] 첫 번째 페이지 크롤링 중: " + url1);
+            
+            driver.get(url1);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc1 = Jsoup.parse(driver.getPageSource());
+            Elements articles1 = doc1.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles1) {
+                if (collectedLinks.size() >= 40) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[여행] 수집 %d/50: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            // 두 번째 페이지 (238) - 50개 수집
+            String url2 = "https://news.naver.com/breakingnews/section/103/238";
+            System.out.println("[여행] 두 번째 페이지 크롤링 중: " + url2);
+            
+            driver.get(url2);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc2 = Jsoup.parse(driver.getPageSource());
+            Elements articles2 = doc2.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles2) {
+                if (collectedLinks.size() >= 10) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[여행] 수집 %d/100: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            System.out.printf("[여행] 수집 완료 - 총 %d개%n", batch.size());
+            
+            // 여행 카테고리로 저장
+            saveTravelCategoryToCsv(batch);
+
+        } catch (Exception e) {
+            System.out.println("[오류] 여행 카테고리: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+    }
+
+    /**
+     * 여행 카테고리 기사를 CSV로 저장하는 메서드
+     */
+    private static void saveTravelCategoryToCsv(List<NewsItem> newsList) {
+        String ampm = DateTimeUtils.getCurrentPeriodLower();
+        String dateFolderName = DateTimeUtils.getCurrentDatePeriod();
+        String fileName = "naver_news_여행_" + ampm + ".csv";
+
+        File baseDir = new File("news_crawler/src/main/resources/static");
+        File ampmFolder = new File(baseDir, ampm);
+        File dateFolder = new File(ampmFolder, dateFolderName);
+        if (!dateFolder.exists()) dateFolder.mkdirs();
+
+        File file = new File(dateFolder, fileName);
+        try (
+            FileOutputStream fos = new FileOutputStream(file, true);
+            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+            BufferedWriter bw = new BufferedWriter(osw);
+            PrintWriter writer = new PrintWriter(bw)
+        ) {
+            if (file.length() == 0) {
+                writer.println("title,link,press,news_category,published_at");
+            }
+            for (NewsItem news : newsList) {
+                String timestamp = DateTimeUtils.getCurrentTimestamp();
+                writer.printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"%n",
+                    escape(news.title), escape(news.link), escape(news.press),
+                    "여행", timestamp);
+            }
+            System.out.println("여행 CSV 저장 완료: " + ampm + "/" + dateFolderName + "/" + fileName);
+        } catch (Exception e) {
+            System.out.println("여행 CSV 저장 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 예술 카테고리에서 60개 기사를 수집하는 메서드
+     * https://news.naver.com/breakingnews/section/103/242 (45개)
+     * https://news.naver.com/breakingnews/section/103/243 (15개)
+     */
+    private static void processArtCategory() {
+        System.out.println("[예술] 크롤링 시작 - 목표: 60개 (242: 45개, 243: 15개)");
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        Set<String> collectedLinks = new HashSet<>();
+        List<NewsItem> batch = new ArrayList<>();
+
+        try {
+            // 첫 번째 페이지 (242) - 45개 수집
+            String url1 = "https://news.naver.com/breakingnews/section/103/242";
+            System.out.println("[예술] 첫 번째 페이지 크롤링 중: " + url1);
+            
+            driver.get(url1);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc1 = Jsoup.parse(driver.getPageSource());
+            Elements articles1 = doc1.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles1) {
+                if (collectedLinks.size() >= 45) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[예술] 수집 %d/45: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            // 두 번째 페이지 (243) - 15개 수집
+            String url2 = "https://news.naver.com/breakingnews/section/103/243";
+            System.out.println("[예술] 두 번째 페이지 크롤링 중: " + url2);
+            
+            driver.get(url2);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc2 = Jsoup.parse(driver.getPageSource());
+            Elements articles2 = doc2.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles2) {
+                if (collectedLinks.size() >= 60) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[예술] 수집 %d/60: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            System.out.printf("[예술] 수집 완료 - 총 %d개%n", batch.size());
+            
+            // 예술 카테고리로 저장
+            saveArtCategoryToCsv(batch);
+
+        } catch (Exception e) {
+            System.out.println("[오류] 예술 카테고리: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+    }
+
+    /**
+     * 예술 카테고리 기사를 CSV로 저장하는 메서드
+     */
+    private static void saveArtCategoryToCsv(List<NewsItem> newsList) {
+        String ampm = DateTimeUtils.getCurrentPeriodLower();
+        String dateFolderName = DateTimeUtils.getCurrentDatePeriod();
+        String fileName = "naver_news_예술_" + ampm + ".csv";
+
+        File baseDir = new File("news_crawler/src/main/resources/static");
+        File ampmFolder = new File(baseDir, ampm);
+        File dateFolder = new File(ampmFolder, dateFolderName);
+        if (!dateFolder.exists()) dateFolder.mkdirs();
+
+        File file = new File(dateFolder, fileName);
+        try (
+            FileOutputStream fos = new FileOutputStream(file, true);
+            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+            BufferedWriter bw = new BufferedWriter(osw);
+            PrintWriter writer = new PrintWriter(bw)
+        ) {
+            if (file.length() == 0) {
+                writer.println("title,link,press,news_category,published_at");
+            }
+            for (NewsItem news : newsList) {
+                String timestamp = DateTimeUtils.getCurrentTimestamp();
+                writer.printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"%n",
+                    escape(news.title), escape(news.link), escape(news.press),
+                    "예술", timestamp);
+            }
+            System.out.println("예술 CSV 저장 완료: " + ampm + "/" + dateFolderName + "/" + fileName);
+        } catch (Exception e) {
+            System.out.println("예술 CSV 저장 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 패션 카테고리에서 15개 기사를 수집하는 메서드
+     * https://news.naver.com/breakingnews/section/103/376 (15개)
+     */
+    private static void processFashionCategory() {
+        System.out.println("[패션뷰티] 크롤링 시작 - 목표: 15개");
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        Set<String> collectedLinks = new HashSet<>();
+        List<NewsItem> batch = new ArrayList<>();
+
+        try {
+            // 패션/뷰티 페이지 (376) - 15개 수집
+            String url = "https://news.naver.com/breakingnews/section/103/376";
+            System.out.println("[패션] 페이지 크롤링 중: " + url);
+            
+            driver.get(url);
+            Thread.sleep(2000); // 페이지 로딩 대기
+            
+            Document doc = Jsoup.parse(driver.getPageSource());
+            Elements articles = doc.select("#newsct div.section_latest_article ul li");
+            
+            for (Element article : articles) {
+                if (collectedLinks.size() >= 15) break;
+                NewsItem newsItem = extractNewsItem(article);
+                
+                if (newsItem != null && collectedLinks.add(newsItem.link)) {
+                    batch.add(newsItem);
+                    System.out.printf("[패션뷰티] 수집 %d/15: %s%n", collectedLinks.size(), newsItem.title);
+                }
+            }
+
+            System.out.printf("[패션뷰티] 수집 완료 - 총 %d개%n", batch.size());
+            
+            // 패션 카테고리로 저장
+            saveFashionCategoryToCsv(batch);
+
+        } catch (Exception e) {
+            System.out.println("[오류] 패션뷰티 카테고리: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+    }
+
+    /**
+     * 패션 카테고리 기사를 CSV로 저장하는 메서드
+     */
+    private static void saveFashionCategoryToCsv(List<NewsItem> newsList) {
+        String ampm = DateTimeUtils.getCurrentPeriodLower();
+        String dateFolderName = DateTimeUtils.getCurrentDatePeriod();
+        String fileName = "naver_news_패션뷰티_" + ampm + ".csv";
+
+        File baseDir = new File("news_crawler/src/main/resources/static");
+        File ampmFolder = new File(baseDir, ampm);
+        File dateFolder = new File(ampmFolder, dateFolderName);
+        if (!dateFolder.exists()) dateFolder.mkdirs();
+
+        File file = new File(dateFolder, fileName);
+        try (
+            FileOutputStream fos = new FileOutputStream(file, true);
+            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+            BufferedWriter bw = new BufferedWriter(osw);
+            PrintWriter writer = new PrintWriter(bw)
+        ) {
+            if (file.length() == 0) {
+                writer.println("title,link,press,news_category,published_at");
+            }
+            for (NewsItem news : newsList) {
+                String timestamp = DateTimeUtils.getCurrentTimestamp();
+                writer.printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"%n",
+                    escape(news.title), escape(news.link), escape(news.press),
+                    "패션뷰티", timestamp);
+            }
+            System.out.println("패션뷰티 CSV 저장 완료: " + ampm + "/" + dateFolderName + "/" + fileName);
+        } catch (Exception e) {
+            System.out.println("패션뷰티 CSV 저장 실패: " + e.getMessage());
+        }
     }
 
     static class NewsItem {

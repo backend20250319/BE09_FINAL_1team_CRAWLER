@@ -30,7 +30,7 @@ THRESHOLD_CONTENT = 0.8
 THRESHOLD_RELATED_MIN = 0.4  # 또는 0.4 등 적절한 값
 
 # 모든 카테고리 리스트
-ALL_CATEGORIES = ["정치", "경제", "사회", "생활문화", "세계", "IT과학"]
+ALL_CATEGORIES = ["정치", "경제", "사회", "생활", "세계", "IT과학", "자동차", "여행", "예술", "패션뷰티"]
 
 # 파일 경로 생성 함수 (절대경로로 반환됨)
 def get_file_path(period=PERIOD, date=DATE, category=CATEGORY):

@@ -24,15 +24,15 @@ public class NewsDetailBatchProcessor {
 
     // 성능 최적화를 위한 상수들
     private static final int BATCH_SIZE = 8; // 배치 크기 (적당한 크기)
-    private static final int INITIAL_CONCURRENT_REQUESTS = 3; // 초기 동시 요청 수
-    private static final int MAX_CONCURRENT_REQUESTS = 6; // 최대 동시 요청 수
+    private static final int INITIAL_CONCURRENT_REQUESTS = 2; // 초기 동시 요청 수 (3→2로 감소)
+    private static final int MAX_CONCURRENT_REQUESTS = 4; // 최대 동시 요청 수 (6→4로 감소)
     private static final int MIN_CONCURRENT_REQUESTS = 1; // 최소 동시 요청 수
-    private static final int CONNECTION_TIMEOUT = 20000; // 연결 타임아웃 (20초)
-    private static final int READ_TIMEOUT = 40000; // 읽기 타임아웃 (40초)
-    private static final int RETRY_ATTEMPTS = 2; // 재시도 횟수
-    private static final long RETRY_DELAY = 2000; // 재시도 간격 (2초)
-    private static final long REQUEST_DELAY = 500; // 요청 간격 (500ms)
-    private static final double SUCCESS_RATE_THRESHOLD = 0.7; // 성공률 임계값 (70%)
+    private static final int CONNECTION_TIMEOUT = 30000; // 연결 타임아웃 (20초→30초로 증가)
+    private static final int READ_TIMEOUT = 60000; // 읽기 타임아웃 (40초→60초로 증가)
+    private static final int RETRY_ATTEMPTS = 3; // 재시도 횟수 (2→3으로 증가)
+    private static final long RETRY_DELAY = 3000; // 재시도 간격 (2초→3초로 증가)
+    private static final long REQUEST_DELAY = 1000; // 요청 간격 (500ms→1000ms로 증가)
+    private static final double SUCCESS_RATE_THRESHOLD = 0.6; // 성공률 임계값 (70%→60%로 감소)
 
     // 연결 풀 관리를 위한 ExecutorService (동적 크기 조절)
     private static ExecutorService executorService;
@@ -336,30 +336,54 @@ public class NewsDetailBatchProcessor {
     private static NewsDetail crawlNewsDetailWithRetry(NewsLinkInfo linkInfo) {
         for (int attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
             try {
+                System.out.println("재시도 " + attempt + "/" + RETRY_ATTEMPTS + " - URL: " + linkInfo.link);
+                
                 NewsDetail detail = crawlNewsDetailOptimized(linkInfo.link, linkInfo.title, 
                                                            linkInfo.press, linkInfo.newsCategoryName, linkInfo.newsCategoryId);
                 
                 if (detail != null) {
+                    System.out.println("✅ 재시도 " + attempt + " 성공");
                     return detail;
                 }
                 
                 // 실패 시 재시도 전 대기
                 if (attempt < RETRY_ATTEMPTS) {
-                    Thread.sleep(RETRY_DELAY * attempt); // 지수 백오프
+                    long delay = RETRY_DELAY * attempt;
+                    System.out.println("재시도 " + attempt + " 실패. " + delay + "ms 후 재시도...");
+                    Thread.sleep(delay); // 지수 백오프
                 }
                 
             } catch (Exception e) {
-                if (attempt < RETRY_ATTEMPTS) {
-                    try {
-                        Thread.sleep(RETRY_DELAY * attempt);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
+                // 네트워크 관련 오류인지 확인
+                String errorMessage = e.getMessage().toLowerCase();
+                if (errorMessage.contains("timeout") || errorMessage.contains("connect") || 
+                    errorMessage.contains("connection") || errorMessage.contains("network")) {
+                    System.err.println("❌ 네트워크 타임아웃/연결 오류 (재시도 " + attempt + "): " + e.getMessage());
+                    if (attempt < RETRY_ATTEMPTS) {
+                        try {
+                            long delay = RETRY_DELAY * attempt * 2; // 네트워크 오류 시 더 긴 대기
+                            System.out.println("네트워크 오류로 인한 추가 대기: " + delay + "ms");
+                            Thread.sleep(delay);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                } else {
+                    System.err.println("❌ 일반 오류 (재시도 " + attempt + "): " + e.getMessage());
+                    if (attempt < RETRY_ATTEMPTS) {
+                        try {
+                            Thread.sleep(RETRY_DELAY * attempt);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
                     }
                 }
             }
         }
         
+        System.err.println("❌ 모든 재시도 실패: " + linkInfo.link);
         return null;
     }
 
@@ -497,6 +521,12 @@ public class NewsDetailBatchProcessor {
             Element contentElement = doc.selectFirst("#dic_area");
             if (contentElement != null) {
                 content = contentElement.text();
+            }
+
+            // 본문이 비어있거나 너무 짧으면 크롤링 제외
+            if (content == null || content.trim().isEmpty() || content.trim().length() < 120) {
+                System.out.println("본문이 비어있거나 너무 짧아서 제외: " + url);
+                return null;
             }
 
             // 우선순위 2: 본문에서 기자 이름 추출 (지정된 필드에 정보가 없을 경우)
@@ -659,9 +689,13 @@ public class NewsDetailBatchProcessor {
             "정치", 100,
             "경제", 101,
             "사회", 102,
-            "생활/문화", 103,
             "세계", 104,
-            "IT/과학", 105
+            "IT과학", 105,
+            "자동차", 106,
+            "생활", 107,
+            "여행", 108,
+            "예술", 109,
+            "패션뷰티", 110
         );
         return categoryMap.getOrDefault(categoryName, 100);
     }
