@@ -346,6 +346,14 @@ public class NewsDetailBatchProcessor {
                     return detail;
                 }
                 
+                // VOD 기사나 본문이 너무 짧은 경우는 재시도하지 않음
+                if (attempt == 1) {
+                    // 첫 번째 시도에서 null이 반환된 경우, VOD 기사나 본문 문제일 가능성이 높음
+                    // 이런 경우는 재시도하지 않고 바로 종료
+                    System.out.println("VOD 기사 또는 본문 문제로 재시도 중단: " + linkInfo.link);
+                    return null;
+                }
+                
                 // 실패 시 재시도 전 대기
                 if (attempt < RETRY_ATTEMPTS) {
                     long delay = RETRY_DELAY * attempt;
