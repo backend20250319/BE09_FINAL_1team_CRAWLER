@@ -20,29 +20,28 @@ public class NewsCrawlingService {
      * 전체 크롤링 프로세스를 순차적으로 실행
      */
     public void runFullCrawlingProcess() {
-        logger.info("🚀 전체 크롤링 프로세스 시작");
         
         try {
             // 1단계: 뉴스 목록 크롤링
-            logger.info("📰 1단계: 뉴스 목록 크롤링 시작");
+            logger.info("1단계: 뉴스 목록 크롤링 시작");
             runNewsListCrawling();
             
             // 2단계: 뉴스 상세 크롤링
-            logger.info("📄 2단계: 뉴스 상세 크롤링 시작");
+            logger.info("2단계: 뉴스 상세 크롤링 시작");
             runNewsDetailCrawling();
             
             // 3단계: 중복 제거 처리 (Python 스크립트 실행)
-            logger.info("🔍 3단계: 중복 제거 처리 시작");
+            logger.info("3단계: 중복 제거 처리 시작");
             runDeduplicationProcess();
             
             // 4단계: 데이터베이스 저장
-            logger.info("💾 4단계: 데이터베이스 저장 시작");
+            logger.info("4단계: 데이터베이스 저장 시작");
             runDatabaseInsertion();
             
-            logger.info("✅ 전체 크롤링 프로세스 완료!");
+            logger.info("전체 크롤링 프로세스 완료!");
             
         } catch (Exception e) {
-            logger.error("❌ 크롤링 프로세스 중 오류 발생: " + e.getMessage(), e);
+            logger.error("크롤링 프로세스 중 오류 발생: " + e.getMessage(), e);
         }
     }
     
@@ -54,9 +53,9 @@ public class NewsCrawlingService {
             // NaverNewsListEfficientCrawler의 main 메서드 호출
             String[] args = {"100"}; // 목표 개수 100개
             NaverNewsListEfficientCrawler.main(args);
-            logger.info("✅ 뉴스 목록 크롤링 완료");
+            logger.info("뉴스 목록 크롤링 완료");
         } catch (Exception e) {
-            logger.error("❌ 뉴스 목록 크롤링 실패: " + e.getMessage(), e);
+            logger.error("뉴스 목록 크롤링 실패: " + e.getMessage(), e);
             throw e;
         }
     }
@@ -68,9 +67,9 @@ public class NewsCrawlingService {
         try {
             // NewsDetailBatchProcessor의 main 메서드 호출
             NewsDetailBatchProcessor.main(new String[]{});
-            logger.info("✅ 뉴스 상세 크롤링 완료");
+            logger.info("뉴스 상세 크롤링 완료");
         } catch (Exception e) {
-            logger.error("❌ 뉴스 상세 크롤링 실패: " + e.getMessage(), e);
+            logger.error("뉴스 상세 크롤링 실패: " + e.getMessage(), e);
             throw e;
         }
     }
@@ -97,7 +96,7 @@ public class NewsCrawlingService {
                 processBuilder.command("python3", pythonScript);
             }
             
-            logger.info("🐍 Python 중복 제거 스크립트 실행: " + pythonScript);
+            logger.info("Python 중복 제거 스크립트 실행: " + pythonScript);
             
             Process process = processBuilder.start();
 
@@ -118,7 +117,7 @@ public class NewsCrawlingService {
                     String line;
                     while ((line = outputReader.readLine()) != null) {
                         output.append(line).append("\n");
-                        logger.info("🐍 Python 출력: " + line);
+                        logger.info("Python 출력: " + line);
                     }
                 } catch (Exception e) {
                     logger.error("Python 출력 읽기 오류: " + e.getMessage());
@@ -130,7 +129,7 @@ public class NewsCrawlingService {
                     String line;
                     while ((line = errorReader.readLine()) != null) {
                         errorOutput.append(line).append("\n");
-                        logger.error("🐍 Python 오류: " + line);
+                        logger.error("Python 오류: " + line);
                     }
                 } catch (Exception e) {
                     logger.error("Python 오류 출력 읽기 오류: " + e.getMessage());
@@ -148,16 +147,16 @@ public class NewsCrawlingService {
             errorThread.join(5000);
 
             if (exitCode == 0) {
-                logger.info("✅ 중복 제거 처리 완료");
+                logger.info("중복 제거 처리 완료");
                 logger.info("Python 스크립트 출력: " + output.toString());
             } else {
-                logger.error("❌ 중복 제거 처리 실패 (종료 코드: " + exitCode + ")");
-                logger.error("❌ Python 스크립트 오류 출력: " + errorOutput.toString());
+                logger.error("중복 제거 처리 실패 (종료 코드: " + exitCode + ")");
+                logger.error("Python 스크립트 오류 출력: " + errorOutput.toString());
                 throw new RuntimeException("중복 제거 처리 실패 - Python 스크립트 오류: " + errorOutput.toString());
             }
             
         } catch (Exception e) {
-            logger.error("❌ 중복 제거 처리 중 오류: " + e.getMessage(), e);
+            logger.error("중복 제거 처리 중 오류: " + e.getMessage(), e);
             throw new RuntimeException("중복 제거 처리 실패", e);
         }
     }
@@ -169,9 +168,9 @@ public class NewsCrawlingService {
         try {
             // CsvToDatabase의 main 메서드 호출
             CsvToDatabase.main(new String[]{});
-            logger.info("✅ 데이터베이스 저장 완료");
+            logger.info("데이터베이스 저장 완료");
         } catch (Exception e) {
-            logger.error("❌ 데이터베이스 저장 실패: " + e.getMessage(), e);
+            logger.error("데이터베이스 저장 실패: " + e.getMessage(), e);
             throw e;
         }
     }

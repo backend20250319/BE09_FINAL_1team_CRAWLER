@@ -24,22 +24,22 @@ public class CsvToDatabase {
         File baseDir = new File(basePath);
         
         if (!baseDir.exists() || !baseDir.isDirectory()) {
-            System.err.println("❌ 기본 디렉토리를 찾을 수 없습니다: " + basePath);
+            System.err.println("기본 디렉토리를 찾을 수 없습니다: " + basePath);
             return null;
         }
         
         // 재귀적으로 모든 deduplicated-related 폴더 찾기
         List<String> dedupPaths = new ArrayList<>();
 
-        System.out.println("🔍 기본 디렉토리: " + baseDir.getAbsolutePath());
+        System.out.println("기본 디렉토리: " + baseDir.getAbsolutePath());
         findDeduplicatedRelatedFolders(baseDir, dedupPaths);
-        System.out.println("📁 찾은 deduplicated-related 폴더 수: " + dedupPaths.size());
+        System.out.println("찾은 deduplicated-related 폴더 수: " + dedupPaths.size());
         for (String path : dedupPaths) {
             System.out.println("  - " + path);
         }
         
         if (dedupPaths.isEmpty()) {
-            System.err.println("❌ deduplicated-related 폴더를 찾을 수 없습니다.");
+            System.err.println("deduplicated-related 폴더를 찾을 수 없습니다.");
             return null;
         }
         
@@ -49,9 +49,8 @@ public class CsvToDatabase {
         
         for (String path : dedupPaths) {
             // 경로에서 날짜 추출
-            System.out.println("🔍 경로 분석: " + path);
             String datePeriod = extractDateFromPath(path);
-            System.out.println("📅 추출된 날짜: " + datePeriod);
+            System.out.println("날짜: " + datePeriod);
             if (datePeriod != null) {
                 try {
                     String dateStr = datePeriod.substring(0, 10); // yyyy-MM-dd
@@ -60,15 +59,13 @@ public class CsvToDatabase {
                     int hour = periodStr.equals("pm") ? 18 : 6;
                     LocalDateTime dateTime = LocalDateTime.parse(dateStr + " " + hour + ":00:00", 
                         DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss"));
-                    
-                    System.out.println("📅 비교: " + datePeriod + " → " + dateTime);
                     if (latestDateTime == null || dateTime.isAfter(latestDateTime)) {
                         latestDateTime = dateTime;
                         latestPath = path;
-                        System.out.println("✅ 새로운 최신: " + datePeriod + " → " + path);
+                        System.out.println("최신: " + datePeriod + " → " + path);
                     }
                 } catch (Exception e) {
-                    System.err.println("⚠️ 날짜 파싱 실패: " + datePeriod);
+                    System.err.println("날짜 파싱 실패: " + datePeriod);
                 }
             }
         }
@@ -86,9 +83,9 @@ public class CsvToDatabase {
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory()) {
-                    System.out.println("🔍 검색 중: " + file.getAbsolutePath());
+                    System.out.println("검색 : " + file.getAbsolutePath());
                     if (file.getName().equals("deduplicated-related")) {
-                        System.out.println("✅ deduplicated-related 폴더 발견: " + file.getAbsolutePath());
+                        System.out.println("deduplicated-related 폴더 발견: " + file.getAbsolutePath());
                         results.add(file.getAbsolutePath() + "/");
                     } else {
                         // 재귀적으로 하위 폴더 검색
@@ -147,45 +144,41 @@ public class CsvToDatabase {
             dbUser = env.getProperty("spring.datasource.username");
             dbPassword = env.getProperty("spring.datasource.password");
             
-            System.out.println("✅ Spring 설정에서 DB 정보 가져오기 성공");
-            System.out.println("DB_URL: " + dbUrl);
-            System.out.println("DB_USER: " + dbUser);
-            
             context.close();
         } catch (Exception e) {
-            System.err.println("❌ Spring 설정 로드 실패: " + e.getMessage());
+            System.err.println("Spring 설정 로드 실패: " + e.getMessage());
             return;
         }
         
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-            System.out.println("✅ DB 연결 성공");
+            System.out.println("DB 연결 성공");
             
             // 테이블 존재 여부 확인
             try {
                 DatabaseMetaData metaData = conn.getMetaData();
                 ResultSet tables = metaData.getTables(null, null, "news", null);
                 if (tables.next()) {
-                    System.out.println("✅ news 테이블 존재 확인");
+                    System.out.println("news 테이블 존재 확인");
                 } else {
-                    System.err.println("❌ news 테이블이 존재하지 않습니다!");
+                    System.err.println("news 테이블이 존재하지 않습니다!");
                 }
                 
                 tables = metaData.getTables(null, null, "related_news", null);
                 if (tables.next()) {
-                    System.out.println("✅ related_news 테이블 존재 확인");
+                    System.out.println("related_news 테이블 존재 확인");
                 } else {
-                    System.err.println("❌ related_news 테이블이 존재하지 않습니다!");
+                    System.err.println("related_news 테이블이 존재하지 않습니다!");
                 }
             } catch (Exception e) {
-                System.err.println("❌ 테이블 확인 중 오류: " + e.getMessage());
+                System.err.println("테이블 확인 중 오류: " + e.getMessage());
             }
             
             // 가장 최신 파일의 CSV 경로 찾기
             String csvBasePath = findLatestCsvBasePath();
             if (csvBasePath == null) {
-                System.err.println("❌ 최신 CSV 파일을 찾을 수 없습니다.");
+                System.err.println("최신 CSV 파일을 찾을 수 없습니다.");
                 return;
             }
             
@@ -195,14 +188,14 @@ public class CsvToDatabase {
             String period = datePeriod.substring(11); // am/pm
             String date = datePeriod.substring(0, 10); // yyyy-MM-dd
             
-            System.out.println("📅 처리할 최신 파일: " + datePeriod);
-            System.out.println("📅 날짜: " + date + " (" + period.toUpperCase() + ")");
-            System.out.println("📁 경로: " + csvBasePath);
+            System.out.println("처리할 최신 파일: " + datePeriod);
+            System.out.println("날짜: " + date + " (" + period.toUpperCase() + ")");
+            System.out.println("경로: " + csvBasePath);
             
             // 실제 파일 목록 확인
             File baseDir = new File(csvBasePath);
             if (baseDir.exists() && baseDir.isDirectory()) {
-                System.out.println("\n📁 실제 CSV 파일 목록:");
+                System.out.println("\n실제 CSV 파일 목록:");
                 File[] files = baseDir.listFiles((dir, name) -> name.endsWith(".csv"));
                 if (files != null) {
                     for (File file : files) {
@@ -210,7 +203,7 @@ public class CsvToDatabase {
                     }
                 }
             } else {
-                System.err.println("❌ 기본 디렉토리를 찾을 수 없습니다: " + csvBasePath);
+                System.err.println("기본 디렉토리를 찾을 수 없습니다: " + csvBasePath);
                 return;
             }
 
@@ -228,28 +221,28 @@ public class CsvToDatabase {
                 File relatedFileObj = new File(relatedPath);
                 
                 if (!newsFileObj.exists()) {
-                    System.err.println("❌ 뉴스 파일을 찾을 수 없습니다: " + newsPath);
+                    System.err.println("뉴스 파일을 찾을 수 없습니다: " + newsPath);
                     continue;
                 }
                 
                 if (!relatedFileObj.exists()) {
-                    System.err.println("⚠️ 연관 뉴스 파일을 찾을 수 없습니다: " + relatedPath);
+                    System.err.println("연관 뉴스 파일을 찾을 수 없습니다: " + relatedPath);
                 }
                 
                 Map<Integer, Long> indexToNewsId = insertNewsCsv(conn, newsPath, category);
                 if (relatedFileObj.exists()) {
                     insertRelatedNewsCsv(conn, relatedPath, indexToNewsId);
                 } else {
-                    System.out.println("📎 연관 뉴스 파일이 없어서 스킵합니다.");
+                    System.out.println("연관 뉴스 파일이 없어서 스킵합니다.");
                 }
             }
 
             conn.close();
-            System.out.println("\n✅ 모든 삽입 완료!");
+            System.out.println("\n모든 삽입 완료!");
 
         } catch (Exception e) {
-            System.err.println("❌ 오류 발생: " + e.getMessage());
-            System.err.println("❌ 오류 타입: " + e.getClass().getSimpleName());
+            System.err.println("오류 발생: " + e.getMessage());
+            System.err.println("오류 타입: " + e.getClass().getSimpleName());
             e.printStackTrace();
         }
     }
@@ -275,13 +268,11 @@ public class CsvToDatabase {
                     if (fields.length < 12) continue; // 컬럼 수 증가로 인한 최소 필드 수 조정
 
                     // CSV 헤더: "news_category_id","press","title","reporter","published_at","link","created_at","image_url","trusted","oid_aid","content","mark", "dedup_state"
-                    String newsCategoryId = fields[0];
+   
                     String press = fields[1];
                     String title = fields[2];
                     String reporter = fields[3];
                     String publishedAt = fields[4];
-                    String link = fields[5];
-                    String createdAt = fields[6];
                     String imageUrl = fields[7];
                     String trusted = fields[8];
                     String oidAid = fields[9];
@@ -317,14 +308,14 @@ public class CsvToDatabase {
                     csvIndex++;
                     count++;
                 } catch (Exception e) {
-                    System.err.println("❌ 뉴스 삽입 실패: " + line);
+                    System.err.println("뉴스 삽입 실패: " + line);
                     System.err.println(" - " + e.getMessage());
                 }
             }
 
-            System.out.printf("✅ [%s] 뉴스 %d개 삽입 완료\n", categoryName, count);
+            System.out.printf("[%s] 뉴스 %d개 삽입 완료\n", categoryName, count);
         } catch (Exception e) {
-            System.err.println("❌ 뉴스 처리 중 오류: " + e.getMessage());
+            System.err.println("뉴스 처리 중 오류: " + e.getMessage());
         }
 
         return indexToNewsId;
@@ -362,7 +353,7 @@ public class CsvToDatabase {
             System.out.printf("📎 연관 뉴스 %d개 삽입 완료 (%s)\n", count, filePath);
 
         } catch (Exception e) {
-            System.err.println("❌ 연관 뉴스 처리 중 오류: " + e.getMessage());
+            System.err.println("연관 뉴스 처리 중 오류: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -373,7 +364,7 @@ public class CsvToDatabase {
             // 2025-08-07 11:43:12 형태의 날짜를 직접 파싱
             return LocalDateTime.parse(publishedAt, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         } catch (Exception e) {
-            System.err.println("⚠️ 날짜 파싱 실패: " + publishedAt);
+            System.err.println("날짜 파싱 실패: " + publishedAt);
             return LocalDateTime.now();
         }
     }

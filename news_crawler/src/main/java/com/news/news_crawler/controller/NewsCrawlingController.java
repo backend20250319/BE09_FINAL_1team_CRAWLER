@@ -29,7 +29,7 @@ public class NewsCrawlingController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            logger.info("🚀 수동 크롤링 요청 받음");
+            logger.info("수동 크롤링 요청 받음");
             
             // 비동기로 크롤링 실행
             CompletableFuture<Void> future = newsCrawlingService.runFullCrawlingProcessAsync();
@@ -38,12 +38,12 @@ public class NewsCrawlingController {
             response.put("message", "크롤링이 시작되었습니다. 백그라운드에서 실행 중입니다.");
             response.put("timestamp", java.time.LocalDateTime.now().toString());
             
-            logger.info("✅ 크롤링 시작 응답 전송");
+            logger.info("크롤링 시작 응답 전송");
             
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            logger.error("❌ 크롤링 시작 실패: " + e.getMessage(), e);
+            logger.error("크롤링 시작 실패: " + e.getMessage(), e);
             
             response.put("status", "error");
             response.put("message", "크롤링 시작 중 오류가 발생했습니다: " + e.getMessage());
@@ -110,7 +110,7 @@ public class NewsCrawlingController {
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            logger.error("❌ 단계별 크롤링 실패: " + e.getMessage(), e);
+            logger.error("단계별 크롤링 실패: " + e.getMessage(), e);
             
             response.put("status", "error");
             response.put("message", "단계별 크롤링 중 오류가 발생했습니다: " + e.getMessage());

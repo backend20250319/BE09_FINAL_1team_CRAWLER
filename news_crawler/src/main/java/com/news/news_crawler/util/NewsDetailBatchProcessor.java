@@ -283,10 +283,10 @@ public class NewsDetailBatchProcessor {
                 if (detail != null) {
                     allResults.add(detail);
                     successCount.incrementAndGet();
-                    System.out.println("✅ 배치 " + batchNumber + " - 링크 성공");
+                    System.out.println("배치 " + batchNumber + " - 링크 성공");
                 } else {
                     failCount.incrementAndGet();
-                    System.out.println("❌ 배치 " + batchNumber + " - 링크 실패");
+                    System.out.println("배치 " + batchNumber + " - 링크 실패");
                 }
                 
                 int processed = processedCount.incrementAndGet();
@@ -296,10 +296,10 @@ public class NewsDetailBatchProcessor {
                 
             } catch (InterruptedException | ExecutionException e) {
                 failCount.incrementAndGet();
-                System.err.println("❌ 배치 " + batchNumber + " - 링크 처리 중 오류: " + e.getMessage());
+                System.err.println("배치 " + batchNumber + " - 링크 처리 중 오류: " + e.getMessage());
             } catch (TimeoutException e) {
                 failCount.incrementAndGet();
-                System.err.println("❌ 배치 " + batchNumber + " - 링크 타임아웃 (45초 초과)");
+                System.err.println("배치 " + batchNumber + " - 링크 타임아웃 (45초 초과)");
                 future.cancel(true);
             }
         }
@@ -342,7 +342,7 @@ public class NewsDetailBatchProcessor {
                                                            linkInfo.press, linkInfo.newsCategoryName, linkInfo.newsCategoryId);
                 
                 if (detail != null) {
-                    System.out.println("✅ 재시도 " + attempt + " 성공");
+                    System.out.println("재시도 " + attempt + " 성공");
                     return detail;
                 }
                 
@@ -366,7 +366,7 @@ public class NewsDetailBatchProcessor {
                 String errorMessage = e.getMessage().toLowerCase();
                 if (errorMessage.contains("timeout") || errorMessage.contains("connect") || 
                     errorMessage.contains("connection") || errorMessage.contains("network")) {
-                    System.err.println("❌ 네트워크 타임아웃/연결 오류 (재시도 " + attempt + "): " + e.getMessage());
+                    System.err.println("네트워크 타임아웃/연결 오류 (재시도 " + attempt + "): " + e.getMessage());
                     if (attempt < RETRY_ATTEMPTS) {
                         try {
                             long delay = RETRY_DELAY * attempt * 2; // 네트워크 오류 시 더 긴 대기
@@ -378,7 +378,7 @@ public class NewsDetailBatchProcessor {
                         }
                     }
                 } else {
-                    System.err.println("❌ 일반 오류 (재시도 " + attempt + "): " + e.getMessage());
+                    System.err.println("일반 오류 (재시도 " + attempt + "): " + e.getMessage());
                     if (attempt < RETRY_ATTEMPTS) {
                         try {
                             Thread.sleep(RETRY_DELAY * attempt);
@@ -391,7 +391,7 @@ public class NewsDetailBatchProcessor {
             }
         }
         
-        System.err.println("❌ 모든 재시도 실패: " + linkInfo.link);
+        System.err.println("모든 재시도 실패: " + linkInfo.link);
         return null;
     }
 
